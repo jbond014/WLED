@@ -178,6 +178,10 @@ describe('Script', () => {
       await testFileModification(path.join(dataPath, 'settings_leds.htm'), 'html_ui.h');
     });
 
+    it('a sync settings file changes', async () => {
+      await testFileModification(path.join(dataPath, 'settings_sync.htm'), 'html_settings.h');
+    });
+
     it('the favicon changes', async () => {
       await testFileModification(path.join(dataPath, 'favicon.ico'), 'html_ui.h');
     });

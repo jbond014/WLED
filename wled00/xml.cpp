@@ -542,6 +542,26 @@ void getSettingsJS(byte subPage, Print& settingsScript)
     settingsScript.print(F("toggle('MQTT');"));    // hide MQTT settings
     #endif
 
+    printSetFormCheckbox(settingsScript,PSTR("WSE"),wsClientEnabled);
+    printSetFormValue(settingsScript,PSTR("WSH"),wsClientHost);
+    printSetFormValue(settingsScript,PSTR("WSP"),wsClientPort);
+    printSetFormValue(settingsScript,PSTR("WSU"),wsClientPath);
+    settingsScript.printf_P(PSTR("d.Sf.WSH.maxLength=%d;d.Sf.WSU.maxLength=%d;"),
+                  WS_CLIENT_MAX_HOST_LEN, WS_CLIENT_MAX_PATH_LEN);
+    if (!wsClientEnabled || !wsClientHost[0]) {
+      printSetClassElementHTML(settingsScript,PSTR("wsstat"),0,(char*)F("Provisioning AP active until configured"));
+    } else if (!WLED_CONNECTED) {
+      printSetClassElementHTML(settingsScript,PSTR("wsstat"),0,(char*)F("Waiting for network"));
+    } else if (wsClientConnected) {
+      printSetClassElementHTML(settingsScript,PSTR("wsstat"),0,(char*)F("Connected"));
+    } else if (wsClientReconnectAttempts) {
+      char wsStatus[40];
+      snprintf_P(wsStatus, sizeof(wsStatus), PSTR("Reconnecting (%u)"), wsClientReconnectAttempts);
+      printSetClassElementHTML(settingsScript,PSTR("wsstat"),0,wsStatus);
+    } else {
+      printSetClassElementHTML(settingsScript,PSTR("wsstat"),0,(char*)F("Disconnected"));
+    }
+
     #ifndef WLED_DISABLE_HUESYNC
     printSetFormValue(settingsScript,PSTR("H0"),hueIP[0]);
     printSetFormValue(settingsScript,PSTR("H1"),hueIP[1]);

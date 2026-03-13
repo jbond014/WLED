@@ -206,6 +206,12 @@ void parseLxJson(int lxValue, byte segId, bool secondary);
 bool initMqtt();
 void publishMqtt();
 
+//ws_client.cpp
+bool isWsClientConfigured();
+void normalizeWsClientPath();
+void initWsClient(bool forceReconnect = false);
+void handleWsClient();
+
 //ntp.cpp
 void handleTime();
 void handleNetworkTime();

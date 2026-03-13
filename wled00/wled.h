@@ -125,6 +125,7 @@
 #endif
 
 #include <ESPAsyncWebServer.h>
+#include <WebSocketsClient.h>
 #include <WiFiUdp.h>
 #include <DNSServer.h>
 #include <SPIFFSEditor.h>
@@ -512,6 +513,22 @@ WLED_GLOBAL bool retainMqttMsg _INIT(false);               // retain brightness 
 #else
 #define WLED_MQTT_CONNECTED false
 #endif
+
+#ifndef WS_CLIENT_MAX_HOST_LEN
+  #define WS_CLIENT_MAX_HOST_LEN 64
+#endif
+#ifndef WS_CLIENT_MAX_PATH_LEN
+  #define WS_CLIENT_MAX_PATH_LEN 96
+#endif
+WLED_GLOBAL WebSocketsClient *wsClient _INIT(NULL);
+WLED_GLOBAL bool wsClientEnabled _INIT(false);
+WLED_GLOBAL bool wsClientConnected _INIT(false);
+WLED_GLOBAL char wsClientHost[WS_CLIENT_MAX_HOST_LEN + 1] _INIT("");
+WLED_GLOBAL char wsClientPath[WS_CLIENT_MAX_PATH_LEN + 1] _INIT("/");
+WLED_GLOBAL uint16_t wsClientPort _INIT(80);
+WLED_GLOBAL unsigned long lastWsClientReconnectAttempt _INIT(0);
+WLED_GLOBAL unsigned long wsClientNextReconnectAttempt _INIT(0);
+WLED_GLOBAL uint8_t wsClientReconnectAttempts _INIT(0);
 
 #ifndef WLED_DISABLE_HUESYNC
 WLED_GLOBAL bool huePollingEnabled _INIT(false);           // poll hue bridge for light state

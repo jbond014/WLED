@@ -503,6 +503,19 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
     retainMqttMsg = request->hasArg(F("RT"));
     #endif
 
+    wsClientEnabled = request->hasArg(F("WSE"));
+    strlcpy(wsClientHost, request->arg(F("WSH")).c_str(), WS_CLIENT_MAX_HOST_LEN+1);
+    t = request->arg(F("WSP")).toInt();
+    if (t > 0) wsClientPort = t;
+    strlcpy(wsClientPath, request->arg(F("WSU")).c_str(), WS_CLIENT_MAX_PATH_LEN+1);
+    normalizeWsClientPath();
+    initWsClient(true);
+    if (isWsClientConfigured() && WLED_CONNECTED && apActive && apBehavior != AP_BEHAVIOR_ALWAYS) {
+      dnsServer.stop();
+      WiFi.softAPdisconnect(true);
+      apActive = false;
+    }
+
     #ifndef WLED_DISABLE_HUESYNC
     for (int i=0;i<4;i++){
       String a = "H"+String(i);

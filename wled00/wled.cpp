@@ -68,6 +68,7 @@ void WLED::loop()
   handleImprovWifiScan();
   handleNotifications();
   handleTransitions();
+  handleWsClient();
   #ifdef WLED_ENABLE_DMX
   handleDMXOutput();
   #endif
@@ -698,13 +699,14 @@ void WLED::initConnection()
   }
 
   lastReconnectAttempt = millis();
+  const bool forceProvisioningAP = !isWsClientConfigured();
 
   if (!WLED_WIFI_CONFIGURED) {
     DEBUG_PRINTLN(F("No connection configured."));
     if (!apActive) initAP();        // instantly go to ap mode
   } else if (!apActive) {
-    if (apBehavior == AP_BEHAVIOR_ALWAYS) {
-      DEBUG_PRINTLN(F("Access point ALWAYS enabled."));
+    if (apBehavior == AP_BEHAVIOR_ALWAYS || forceProvisioningAP) {
+      DEBUG_PRINTLN(forceProvisioningAP ? F("Access point kept for provisioning.") : F("Access point ALWAYS enabled."));
       initAP();
     } else {
       DEBUG_PRINTLN(F("Access point disabled (init)."));
@@ -933,7 +935,7 @@ void WLED::handleConnection()
         initAP();  // start AP only within first 5min
       }
     }
-    if (apActive && apBehavior == AP_BEHAVIOR_TEMPORARY && now > WLED_AP_TIMEOUT && stac == 0) { // disconnect AP after 5min if no clients connected
+    if (apActive && apBehavior == AP_BEHAVIOR_TEMPORARY && isWsClientConfigured() && now > WLED_AP_TIMEOUT && stac == 0) { // disconnect AP after 5min if no clients connected
       // if AP was enabled more than 10min after boot or if client was connected more than 10min after boot do not disconnect AP mode
       if (now < 2*WLED_AP_TIMEOUT) {
         dnsServer.stop();
@@ -960,7 +962,7 @@ void WLED::handleConnection()
     lastMqttReconnectAttempt = 0; // force immediate update
 
     // shut down AP
-    if (apBehavior != AP_BEHAVIOR_ALWAYS && apActive) {
+    if (apBehavior != AP_BEHAVIOR_ALWAYS && apActive && isWsClientConfigured()) {
       dnsServer.stop();
       WiFi.softAPdisconnect(true);
       apActive = false;
