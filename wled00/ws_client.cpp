@@ -6,6 +6,7 @@ constexpr unsigned long WS_CLIENT_PONG_TIMEOUT_MS = 10000UL;
 constexpr unsigned long WS_CLIENT_RECONNECT_BASE_MS = 5000UL;
 constexpr unsigned long WS_CLIENT_RECONNECT_MAX_MS = 300000UL;
 constexpr uint8_t WS_CLIENT_RECONNECT_SHIFT_CAP = 6;
+constexpr uint8_t WS_CLIENT_RECONNECT_ATTEMPT_CAP = 16;
 
 bool wsClientStarted = false;
 
@@ -22,7 +23,7 @@ void scheduleWsClientReconnect(bool resetBackoff = false)
     wsClientReconnectAttempts = 0;
     wsClientNextReconnectAttempt = 0;
   } else {
-    if (wsClientReconnectAttempts < 16) wsClientReconnectAttempts++;
+    if (wsClientReconnectAttempts < WS_CLIENT_RECONNECT_ATTEMPT_CAP) wsClientReconnectAttempts++;
     unsigned long delayMs = wsClientReconnectDelay();
     wsClientNextReconnectAttempt = millis() + delayMs;
     DEBUG_PRINTF_P(PSTR("External WS reconnect in %lus.\n"), delayMs / 1000);
@@ -140,7 +141,7 @@ void handleWsClient()
 {
   const unsigned long now = millis();
 
-  if (lastWsClientReconnectAttempt > now || wsClientNextReconnectAttempt > now + WS_CLIENT_RECONNECT_MAX_MS) {
+  if (lastWsClientReconnectAttempt > now) {
     scheduleWsClientReconnect(true);
   }
 
