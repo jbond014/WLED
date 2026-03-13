@@ -638,6 +638,20 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
   CJSON(retainMqttMsg, if_mqtt[F("rtn")]);
 #endif
 
+  JsonObject if_ws = interfaces["ws"];
+  CJSON(wsClientEnabled, if_ws["en"]);
+  getStringFromJson(wsClientHost, if_ws[F("host")], WS_CLIENT_MAX_HOST_LEN+1);
+  CJSON(wsClientPort, if_ws["port"]);
+  getStringFromJson(wsClientPath, if_ws[F("path")], WS_CLIENT_MAX_PATH_LEN+1);
+  if (!wsClientPath[0]) strlcpy(wsClientPath, "/", sizeof(wsClientPath));
+  if (wsClientPath[0] != '/') {
+    char tmp[sizeof(wsClientPath)];
+    strlcpy(tmp, wsClientPath, sizeof(tmp));
+    wsClientPath[0] = '/';
+    wsClientPath[1] = '\0';
+    strlcat(wsClientPath, tmp, sizeof(wsClientPath));
+  }
+
 #ifndef WLED_DISABLE_HUESYNC
   JsonObject if_hue = interfaces["hue"];
   CJSON(huePollingEnabled, if_hue["en"]);
@@ -1169,6 +1183,12 @@ void serializeConfig(JsonObject root) {
   if_mqtt_topics[F("device")] = mqttDeviceTopic;
   if_mqtt_topics[F("group")] = mqttGroupTopic;
 #endif
+
+  JsonObject if_ws = interfaces.createNestedObject("ws");
+  if_ws["en"] = wsClientEnabled;
+  if_ws[F("host")] = wsClientHost;
+  if_ws["port"] = wsClientPort;
+  if_ws[F("path")] = wsClientPath;
 
 #ifndef WLED_DISABLE_HUESYNC
   JsonObject if_hue = interfaces.createNestedObject("hue");
