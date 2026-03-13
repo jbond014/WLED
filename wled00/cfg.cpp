@@ -643,14 +643,7 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
   getStringFromJson(wsClientHost, if_ws[F("host")], WS_CLIENT_MAX_HOST_LEN+1);
   CJSON(wsClientPort, if_ws["port"]);
   getStringFromJson(wsClientPath, if_ws[F("path")], WS_CLIENT_MAX_PATH_LEN+1);
-  if (!wsClientPath[0]) strlcpy(wsClientPath, "/", sizeof(wsClientPath));
-  if (wsClientPath[0] != '/') {
-    char tmp[sizeof(wsClientPath)];
-    strlcpy(tmp, wsClientPath, sizeof(tmp));
-    wsClientPath[0] = '/';
-    wsClientPath[1] = '\0';
-    strlcat(wsClientPath, tmp, sizeof(wsClientPath));
-  }
+  normalizeWsClientPath();
 
 #ifndef WLED_DISABLE_HUESYNC
   JsonObject if_hue = interfaces["hue"];

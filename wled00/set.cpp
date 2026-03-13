@@ -508,14 +508,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
     t = request->arg(F("WSP")).toInt();
     if (t > 0) wsClientPort = t;
     strlcpy(wsClientPath, request->arg(F("WSU")).c_str(), WS_CLIENT_MAX_PATH_LEN+1);
-    if (!wsClientPath[0]) strlcpy(wsClientPath, "/", sizeof(wsClientPath));
-    if (wsClientPath[0] != '/') {
-      char tmp[sizeof(wsClientPath)];
-      strlcpy(tmp, wsClientPath, sizeof(tmp));
-      wsClientPath[0] = '/';
-      wsClientPath[1] = '\0';
-      strlcat(wsClientPath, tmp, sizeof(wsClientPath));
-    }
+    normalizeWsClientPath();
     initWsClient(true);
     if (isWsClientConfigured() && WLED_CONNECTED && apActive && apBehavior != AP_BEHAVIOR_ALWAYS) {
       dnsServer.stop();

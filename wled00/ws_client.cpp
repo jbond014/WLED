@@ -2,7 +2,7 @@
 
 namespace {
 constexpr unsigned long WS_CLIENT_HEARTBEAT_INTERVAL_MS = 30000UL;
-constexpr unsigned long WS_CLIENT_PONG_TIMEOUT_MS = 10000UL;
+constexpr unsigned long WS_CLIENT_PONG_TIMEOUT_MS = 15000UL;
 constexpr unsigned long WS_CLIENT_RECONNECT_BASE_MS = 5000UL;
 constexpr unsigned long WS_CLIENT_RECONNECT_MAX_MS = 300000UL;
 constexpr uint8_t WS_CLIENT_RECONNECT_SHIFT_CAP = 6;
@@ -13,8 +13,15 @@ bool wsClientStarted = false;
 unsigned long wsClientReconnectDelay()
 {
   uint8_t shift = min(wsClientReconnectAttempts, WS_CLIENT_RECONNECT_SHIFT_CAP);
-  unsigned long delayMs = WS_CLIENT_RECONNECT_BASE_MS << shift;
-  return min(delayMs, WS_CLIENT_RECONNECT_MAX_MS);
+  unsigned long delayMs = WS_CLIENT_RECONNECT_BASE_MS;
+  while (shift-- > 0 && delayMs < WS_CLIENT_RECONNECT_MAX_MS) {
+    if (delayMs > WS_CLIENT_RECONNECT_MAX_MS / 2) {
+      delayMs = WS_CLIENT_RECONNECT_MAX_MS;
+      break;
+    }
+    delayMs *= 2;
+  }
+  return delayMs;
 }
 
 void scheduleWsClientReconnect(bool resetBackoff = false)
@@ -48,10 +55,11 @@ bool sendDataWsClient()
   JsonObject info  = pDoc->createNestedObject("info");
   serializeInfo(info);
 
-  String payload;
-  serializeJson(*pDoc, payload);
+  size_t payloadLen = measureJson(*pDoc);
+  std::vector<char> payload(payloadLen + 1, '\0');
+  serializeJson(*pDoc, payload.data(), payload.size());
   releaseJSONBufferLock();
-  return wsClient->sendTXT(payload);
+  return wsClient->sendTXT(payload.data(), payloadLen);
 }
 
 void wsClientEvent(WStype_t type, uint8_t *payload, size_t length)
@@ -108,12 +116,37 @@ bool isWsClientConfigured()
   return wsClientEnabled && wsClientHost[0] != '\0';
 }
 
+void normalizeWsClientPath()
+{
+  if (!wsClientPath[0]) strlcpy(wsClientPath, "/", sizeof(wsClientPath));
+  if (wsClientPath[0] == '/') return;
+  char tmp[sizeof(wsClientPath)];
+  strlcpy(tmp, wsClientPath, sizeof(tmp));
+  wsClientPath[0] = '/';
+  wsClientPath[1] = '\0';
+  strlcat(wsClientPath, tmp, sizeof(wsClientPath));
+}
+
 void initWsClient(bool forceReconnect)
 {
-  if (!isWsClientConfigured() || !WLED_CONNECTED) {
+  if (!isWsClientConfigured()) {
     disconnectWsClient();
+    delete wsClient;
+    wsClient = nullptr;
     scheduleWsClientReconnect(true);
     return;
+  }
+
+  if (!WLED_CONNECTED) {
+    disconnectWsClient();
+    return;
+  }
+
+  if (forceReconnect && wsClient != nullptr) {
+    disconnectWsClient();
+    delete wsClient;
+    wsClient = nullptr;
+    scheduleWsClientReconnect(true);
   }
 
   if (wsClient == nullptr) {
@@ -121,11 +154,6 @@ void initWsClient(bool forceReconnect)
     if (wsClient == nullptr) return;
     wsClient->onEvent(wsClientEvent);
     wsClient->enableHeartbeat(WS_CLIENT_HEARTBEAT_INTERVAL_MS, WS_CLIENT_PONG_TIMEOUT_MS, 2);
-  }
-
-  if (forceReconnect) {
-    disconnectWsClient();
-    scheduleWsClientReconnect(true);
   }
 
   if (wsClientConnected || wsClientStarted) return;
@@ -141,20 +169,28 @@ void handleWsClient()
 {
   const unsigned long now = millis();
 
+  // millis() wraps roughly every 49 days, so reset the reconnect schedule on rollover.
   if (lastWsClientReconnectAttempt > now) {
     scheduleWsClientReconnect(true);
   }
 
   if (wsClient != nullptr) wsClient->loop();
 
-  if (!isWsClientConfigured() || !WLED_CONNECTED) {
+  if (!isWsClientConfigured()) {
+    disconnectWsClient();
+    delete wsClient;
+    wsClient = nullptr;
+    return;
+  }
+
+  if (!WLED_CONNECTED) {
     disconnectWsClient();
     return;
   }
 
   if (wsClientConnected || wsClientStarted) return;
 
-  if (wsClientNextReconnectAttempt == 0 || (long)(now - wsClientNextReconnectAttempt) >= 0) {
+  if (wsClientNextReconnectAttempt == 0 || now >= wsClientNextReconnectAttempt) {
     initWsClient();
   }
 }

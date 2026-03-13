@@ -208,6 +208,7 @@ void publishMqtt();
 
 //ws_client.cpp
 bool isWsClientConfigured();
+void normalizeWsClientPath();
 void initWsClient(bool forceReconnect = false);
 void handleWsClient();
 
